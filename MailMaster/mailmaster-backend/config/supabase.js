@@ -13,10 +13,15 @@ const supabase = createClient(
     auth: {
       autoRefreshToken: false,
       persistSession: false
+    },
+    db: {
+      schema: 'public'
     }
   }
 );
 
-console.log('✅ Supabase client initialized');
+supabase.from('email_accounts').select('count').limit(1)
+  .then(() => console.log('✅ Supabase connected (service role)'))
+  .catch(err => console.error('❌ Supabase connection failed:', err.message));
 
 module.exports = supabase;

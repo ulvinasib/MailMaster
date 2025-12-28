@@ -76,17 +76,18 @@ router.get('/google/callback', async (req, res) => {
 
     // Check if user exists in Supabase Auth
     let userId = state; // If state has userId, user is already logged in
-    
-    if (!userId) {
-      // Create or get Supabase user
-      const { data: existingUsers } = await supabase
-        .from('users')
-        .select('id')
+
+    if (!userId || userId === '') {
+      // Check if user exists by email
+      const { data: existingUser, error: userError } = await supabase
+        .from('email_accounts')
+        .select('user_id')
         .eq('email', userEmail)
+        .limit(1)
         .single();
 
-      if (existingUsers) {
-        userId = existingUsers.id;
+      if (existingUser) {
+        userId = existingUser.user_id;
       } else {
         // Create new user in Supabase Auth
         const { data: newUser, error: signUpError } = await supabase.auth.admin.createUser({
@@ -108,39 +109,57 @@ router.get('/google/callback', async (req, res) => {
       }
     }
 
-    // Store email account in database
-    const { data: emailAccount, error: insertError } = await supabase
+    // Check if account already exists
+    const { data: existingAccount } = await supabase
       .from('email_accounts')
-      .upsert({
-        user_id: userId,
-        provider: 'gmail',
-        email: userEmail,
-        access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token,
-        token_expires_at: tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : null,
-        is_active: true,
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'user_id,email',
-        returning: 'minimal'
-      });
+      .select('id')
+      .eq('user_id', userId)
+      .eq('provider', 'gmail')
+      .eq('email', userEmail)
+      .single();
 
-    if (insertError) {
-      console.error('Error storing email account:', insertError);
-      throw insertError;
+    if (existingAccount) {
+      // Update existing account
+      const { error: updateError } = await supabase
+        .from('email_accounts')
+        .update({
+          access_token: tokens.access_token,
+          refresh_token: tokens.refresh_token,
+          token_expires_at: tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : null,
+          is_active: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existingAccount.id);
+
+      if (updateError) {
+        console.error('Error updating account:', updateError);
+        throw updateError;
+      }
+
+      console.log('✅ Updated existing Gmail account');
+    } else {
+      // Insert new account
+      const { error: insertError } = await supabase
+        .from('email_accounts')
+        .insert({
+          user_id: userId,
+          provider: 'gmail',
+          email: userEmail,
+          access_token: tokens.access_token,
+          refresh_token: tokens.refresh_token,
+          token_expires_at: tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : null,
+          is_active: true
+        });
+
+      if (insertError) {
+        console.error('Error inserting account:', insertError);
+        throw insertError;
+      }
+
+      console.log('✅ Created new Gmail account');
     }
 
     console.log('✅ Gmail account connected successfully');
-
-    // Create a session token for the user
-    const { data: session, error: sessionError } = await supabase.auth.admin.generateLink({
-      type: 'magiclink',
-      email: userEmail
-    });
-
-    if (sessionError) {
-      console.error('Error creating session:', sessionError);
-    }
 
     // Redirect back to frontend
     res.redirect(`${process.env.FRONTEND_URL}/dashboard?connected=gmail&email=${encodeURIComponent(userEmail)}`);
@@ -237,7 +256,7 @@ router.get('/microsoft/callback', async (req, res) => {
 
     // Check if user exists
     let userId = state;
-    
+
     if (!userId) {
       const { data: existingUsers } = await supabase
         .from('users')

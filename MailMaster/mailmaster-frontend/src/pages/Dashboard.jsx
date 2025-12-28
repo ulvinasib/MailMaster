@@ -12,7 +12,7 @@
 
 //   useEffect(() => {
 //     fetchAccounts();
-    
+
 //     // Check for OAuth callback success
 //     const params = new URLSearchParams(window.location.search);
 //     const connected = params.get('connected');
@@ -34,7 +34,7 @@
 
 //   const fetchAccounts = async () => {
 //     if (!user) return;
-    
+
 //     try {
 //       const { data } = await api.get(`/auth/accounts/${user.id}`);
 //       setAccounts(data.accounts || []);
@@ -48,12 +48,12 @@
 
 //   const connectEmail = async (provider) => {
 //     setConnecting(provider);
-    
+
 //     try {
 //       const { data } = await api.get(`/auth/${provider}`, {
 //         params: { userId: user.id }
 //       });
-      
+
 //       // Redirect to OAuth page
 //       window.location.href = data.url;
 //     } catch (error) {
@@ -262,6 +262,8 @@ import { Mail, Plus, Loader as LoaderIcon, Check, RefreshCw, TrendingUp, Clock, 
 import { useAuth } from '../hooks/useAuth';
 import api from '../services/api';
 import toast from 'react-hot-toast';
+import axios from 'axios';
+
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -272,11 +274,11 @@ export default function Dashboard() {
 
   useEffect(() => {
     console.log('Dashboard mounted, user:', user);
-    
+
     if (user) {
       fetchAccounts();
     }
-    
+
     checkOAuthCallback();
   }, [user]);
 
@@ -301,7 +303,7 @@ export default function Dashboard() {
 
   const fetchAccounts = async () => {
     if (!user?.id) return;
-    
+
     setLoading(true);
     try {
       const { data } = await api.get(`/auth/accounts/${user.id}`);
@@ -323,12 +325,12 @@ export default function Dashboard() {
 
     setConnecting(provider);
     console.log(`Initiating ${provider} OAuth for user:`, user.id);
-    
+
     try {
       const { data } = await api.get(`/auth/${provider}`, {
         params: { userId: user.id }
       });
-      
+
       console.log('Redirecting to OAuth URL:', data.url);
       window.location.href = data.url;
     } catch (error) {
@@ -351,10 +353,27 @@ export default function Dashboard() {
     }
   };
 
-  const syncEmails = async () => {
+  const syncEmails = async (accountId) => {
+    console.log("Data received in syncEmails:", accountId); // Check your browser console!
+
     setSyncing(true);
-    toast.success('Email sync will be available in Day 2!');
-    setTimeout(() => setSyncing(false), 2000);
+    try {
+
+  
+      if (!accountId) return toast.error("No account selected");
+      // Calling your specific route: /sync/:accountId
+      const response = await axios.post(`http://localhost:3001/emails/sync/${accountId}`);
+
+      if (response.data.success) {
+        toast.success(`Successfully synced ${response.data.count} emails!`);
+        // Optional: Refresh your email list here
+      }
+    } catch (error) {
+      console.error('Sync Error:', error);
+      toast.error(error.response?.data?.message || 'Failed to sync emails');
+    } finally {
+      setSyncing(false);
+    }
   };
 
   return (
@@ -365,15 +384,16 @@ export default function Dashboard() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
             <p className="text-gray-600 mt-1">
-              {accounts.length === 0 
-                ? 'Connect your email accounts to get started' 
+              {accounts.length === 0
+                ? 'Connect your email accounts to get started'
                 : `Managing ${accounts.length} email account${accounts.length !== 1 ? 's' : ''}`
               }
             </p>
           </div>
           {accounts.length > 0 && (
             <button
-              onClick={syncEmails}
+              key={accounts[0].id}
+              onClick={()=> syncEmails(accounts[0].id)}
               disabled={syncing}
               className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-lg font-semibold hover:bg-indigo-700 transition disabled:opacity-50"
             >
@@ -441,11 +461,10 @@ export default function Dashboard() {
                               <span className="text-lg font-bold text-gray-900">
                                 {account.email}
                               </span>
-                              <span className={`px-3 py-1 text-xs font-bold rounded-full ${
-                                account.provider === 'gmail' 
-                                  ? 'bg-red-100 text-red-700' 
-                                  : 'bg-blue-100 text-blue-700'
-                              }`}>
+                              <span className={`px-3 py-1 text-xs font-bold rounded-full ${account.provider === 'gmail'
+                                ? 'bg-red-100 text-red-700'
+                                : 'bg-blue-100 text-blue-700'
+                                }`}>
                                 {account.provider.toUpperCase()}
                               </span>
                               {account.is_active && (
@@ -483,7 +502,7 @@ export default function Dashboard() {
               <h2 className="text-2xl font-bold mb-4 text-gray-900">
                 {accounts.length > 0 ? 'Connect Another Account' : 'Connect Your First Account'}
               </h2>
-              
+
               <div className="grid md:grid-cols-2 gap-6">
                 {/* Gmail Card */}
                 <button
@@ -575,11 +594,11 @@ export default function Dashboard() {
                         <span>Set up automation rules to save time</span>
                       </li>
                     </ul>
-                    <button 
-                      onClick={syncEmails}
+                    <button
+                      onClick={() => window.location.href = '/inbox'}
                       className="bg-indigo-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-indigo-700 transition shadow-md"
                     >
-                      Sync Emails Now →
+                      Go to Inbox →
                     </button>
                   </div>
                 </div>

@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const emailRoutes = require('./routes/emails');
 
 require('dotenv').config()
 
@@ -10,6 +11,15 @@ require('dotenv').config()
 const authRoutes = require('./routes/auth');
 
 const app = express();
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    service: 'MailMaster AI Backend'
+  });
+});
 
 // Middleware
 app.use(helmet());
@@ -21,17 +31,15 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    timestamp: new Date().toISOString(),
-    service: 'MailMaster AI Backend'
-  });
-});
-
 // Routes
 app.use('/auth', authRoutes);
+
+//Protected routes
+app.use('/emails', emailRoutes); 
+
+
+
+
 
 // 404 handler
 app.use( (req, res,next) => {
