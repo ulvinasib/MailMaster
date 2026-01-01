@@ -3,6 +3,8 @@ const { google } = require('googleapis');
 const axios = require('axios');
 const supabase = require("../config/supabase")
 const { parseHeaders, extractBodyFromParts, stripHtml } = require("../utils/emailParser")
+const { queueEmailForAI } = require('../jobs/processEmailsAI');
+const { tryCatch } = require('bullmq');
 
 
 class EmailSyncService {
@@ -125,7 +127,7 @@ class EmailSyncService {
         }
 
         // Insert email into database
-        const { error } = await supabase
+        const { data: newEmail, error: InsertError } = await supabase
             .from('emails')
             .insert({
                 account_id: accountId,
@@ -138,13 +140,25 @@ class EmailSyncService {
                 body_text: bodyText?.substring(0, 5000),    // limit to 5000 chars
                 body_html: bodyHtml?.substring(0, 10000),  // limit to 10000 chars
                 is_read: !messageData.labelIds?.includes('UNREAD'),
-                received_at: date ? new Date(date).toISOString() : new Date(parseInt(messageData.internalDate)).toISOString()
-            });
+                received_at: date ? new Date(date).toISOString() : new Date(parseInt(messageData.internalDate)).toISOString(),
+                ai_processed: false
+            })
+            .select("id")
+            .single();
 
-        if (error) {
+        if (InsertError) {
             console.error("Error saving email:", error);
+            return;
         } else {
             console.log("Saved email:", messageData.id);
+        }
+
+        //Queing for ai Processing only after DB insert is confirmed
+        try {
+            await queueEmailForAI(newEmail.id);
+            console.log("Queued email for AI processing:", newEmail.id);
+        }catch(err){
+            console.error("Error queuing email for AI processing:", err);
         }
     }
 
@@ -188,6 +202,8 @@ class EmailSyncService {
             .select('id')
             .eq('message_id', message.id)
             .single();
+
+        await queueEmailForAI(newEmail.id);
 
         if (existing) return;
 
