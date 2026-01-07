@@ -14,6 +14,12 @@ import Inbox from './pages/Inbox';
 import Automations from './pages/Automations';
 import Analytics from './pages/Analytics';
 import Settings from './pages/Settings';
+import Teams from './pages/Teams';
+import Enrichment from './pages/Enrichment';
+import Calendar from './pages/Calendar';
+import PipeLine_CRM from './pages/PipeLine_CRM';
+import Templates from './pages/Templates';
+import MailMasterAI from './pages/MailMasterAI';
 
 // Components
 import Loader from './components/Loader';
@@ -59,6 +65,12 @@ function App() {
             <Route path="/automations" element={<Automations />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path ="/teams" element={<Teams />} />
+            <Route path="/contact-enrichment" element={<Enrichment />} />
+            <Route path="/calendar" element={<Calendar />} />
+            <Route path="/pipeline-crm" element={<PipeLine_CRM />} />
+            <Route path="/templates" element={<Templates />} />
+            <Route path='/mailmaster-ai' element={<MailMasterAI />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>
         ) : (
