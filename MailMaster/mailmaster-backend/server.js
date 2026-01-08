@@ -5,6 +5,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const emailRoutes = require('./routes/emails');
 const aiRoutes = require('./routes/ai');
+const templateRoutes = require('./routes/templates');
 
 
 require('dotenv').config()
@@ -39,6 +40,7 @@ app.use('/auth', authRoutes);
 //Protected routes
 app.use('/emails', emailRoutes); 
 app.use('/ai', aiRoutes);
+app.use('/api/templates', templateRoutes);
 
 
 

@@ -24,4 +24,7 @@ supabase.from('email_accounts').select('count').limit(1)
   .then(() => console.log('✅ Supabase connected (service role)'))
   .catch(err => console.error('❌ Supabase connection failed:', err.message));
 
-module.exports = supabase;
+
+
+
+  module.exports = {supabase};
