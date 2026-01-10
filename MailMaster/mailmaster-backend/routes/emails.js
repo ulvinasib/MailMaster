@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const emailSync = require('../services/emailSync');
-const supabase = require('../config/supabase');
-
+// Add the curly braces!
+const { supabase } = require('../config/supabase.js');
 // Sync emails for an account
 router.post('/sync/:accountId', async (req, res) => {
   try {

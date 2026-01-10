@@ -2,8 +2,8 @@ const express = require('express');
 const { google } = require('googleapis');
 const msal = require('@azure/msal-node');
 const axios = require('axios');
-const supabase = require('../config/supabase');
-
+// Add the curly braces!
+const { supabase } = require('../config/supabase.js');
 const router = express.Router();
 
 // ============================================
