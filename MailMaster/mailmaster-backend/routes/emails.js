@@ -3,6 +3,12 @@ const router = express.Router();
 const emailSync = require('../services/emailSync');
 // Add the curly braces!
 const { supabase } = require('../config/supabase.js');
+const gmailService = require('../services/gmailService');
+
+
+
+
+
 // Sync emails for an account
 router.post('/sync/:accountId', async (req, res) => {
   try {
@@ -187,5 +193,30 @@ router.delete('/:emailId', async (req, res) => {
     res.status(500).json({ error: 'Failed to delete email' });
   }
 });
+
+// POST /emails/send
+router.post('/send', async (req, res) => {
+  try {
+    const { to, subject, body, accountId } = req.body;
+
+    if (!to || !body || !accountId) {
+      return res.status(400).json({ error: "Missing required fields: to, body, or accountId" });
+    }
+
+    // Trigger the transmission
+    const result = await gmailService.sendMessage(accountId, { to, subject, body });
+
+    res.json({ 
+      success: true, 
+      message: 'Transmission complete', 
+      messageId: result.id 
+    });
+  } catch (error) {
+    console.error('Email Transmission Error:', error);
+    res.status(500).json({ error: error.message || 'Failed to send email' });
+  }
+});
+
+
 
 module.exports = router;

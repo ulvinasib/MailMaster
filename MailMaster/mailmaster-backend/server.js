@@ -41,6 +41,7 @@ app.use('/auth', authRoutes);
 app.use('/emails', emailRoutes); 
 app.use('/ai', aiRoutes);
 app.use('/api/templates', templateRoutes);
+app.use('/emails', emailRoutes);
 
 
 

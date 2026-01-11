@@ -4,8 +4,8 @@ if (!process.env.OPENAI_API_KEY) {
   console.error('❌ Missing OPENAI_API_KEY in .env');
 }
 
-const openai = new OpenAI({ 
-  apiKey: process.env.OPENAI_API_KEY 
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
 });
 
 class AIService {
@@ -39,13 +39,13 @@ Respond with ONLY the category name in lowercase. No explanation, no punctuation
       });
 
       const category = completion.choices[0].message.content.trim().toLowerCase();
-      
+
       const validCategories = ['important', 'newsletter', 'sales', 'support', 'spam'];
       if (!validCategories.includes(category)) {
         console.warn(`⚠️ Invalid category "${category}", defaulting to "important"`);
         return 'important';
       }
-      
+
       console.log(`✅ Categorized as: ${category}`);
       return category;
     } catch (error) {
@@ -90,12 +90,12 @@ Respond with ONLY a number 1-10. No explanation.`;
       });
 
       const score = parseInt(completion.choices[0].message.content.trim());
-      
+
       if (isNaN(score) || score < 1 || score > 10) {
         console.warn(`⚠️ Invalid score "${score}", defaulting to 5`);
         return 5;
       }
-      
+
       console.log(`✅ Priority score: ${score}/10`);
       return score;
     } catch (error) {
@@ -207,6 +207,64 @@ Summary:`;
       return null;
     }
   }
+
+
+  /**
+   * Generates a reply using a specific Neural Blueprint
+   * This bridges the Templates module to the Inbox
+   */
+  async generateFromBlueprint(incomingEmail, blueprint, context = '') {
+
+    //  Enhanced Mock Check: This catches the exact string OpenAI is complaining about
+    const isInvalidKey = !process.env.OPENAI_API_KEY ||
+      process.env.OPENAI_API_KEY.includes('your-key-here') ||
+      process.env.OPENAI_API_KEY.includes('ActualKeyStartsHere');
+
+    if (isInvalidKey) {
+      console.log("🧪 AI Service: Entering Mock Mode to prevent 401 error");
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      return `[NEURAL DRAFT - MOCK MODE]\n\nHello ${incomingEmail.from_name || 'there'},\n\nThis is a synthesis of the "${blueprint.name}" blueprint.\n\nContext detected: "${incomingEmail.subject}"\nOverride applied: "${context || 'None'}"\n\n[System: Connect a valid OpenAI Key to see live AI generations.]`;
+    }
+    const prompt = `You are an expert executive assistant. Your task is to draft a reply using a specific "Neural Blueprint" (template).
+
+INSTRUCTIONS:
+1. Use the provided BLUEPRINT as your structural guide.
+2. Identify the variables in the blueprint (e.g., {{name}}, {{company}}, {{specific_detail}}).
+3. Fill in those variables accurately using information from the INCOMING EMAIL.
+4. If a variable's information is not available, use your best professional judgment or a placeholder.
+5. Maintain the exact tone of the Blueprint.
+
+INCOMING EMAIL:
+From: ${incomingEmail.from_name}
+Subject: ${incomingEmail.subject}
+Body: ${incomingEmail.body_text}
+
+NEURAL BLUEPRINT:
+${blueprint.content}
+
+${context ? `ADDITIONAL USER CONTEXT: ${context}` : ''}
+
+Write ONLY the final filled-out email body. No subject line, no signature.`;
+
+    try {
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o', // Higher intelligence for better variable mapping
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.6,
+      });
+
+
+      return completion.choices[0].message.content.trim();
+    } catch (error) {
+      console.error('❌ Blueprint generation error:', error.message);
+      // If you don't have tokens yet, uncomment the line below for testing:
+      // return blueprint.content.replace(/{{(.*?)}}/g, "(Neural AI Draft)");
+      throw error;
+    }
+  }
+
+
 }
 
 module.exports = new AIService();

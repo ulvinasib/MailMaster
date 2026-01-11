@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const aiService = require('../services/aiService');
-const supabase = require('../config/supabase');
+const {supabase} = require('../config/supabase');
 const { queueEmailForAI } = require('../jobs/processEmailsAI');
 
 // Generate AI response for an email
@@ -69,6 +69,44 @@ router.post('/process-batch', async (req, res) => {
       message: `Queued ${emails.length} emails for processing`
     });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
+router.post('/generate-from-blueprint', async (req, res) => {
+  try {
+    const { emailId, templateId, context = '' } = req.body;
+
+    // 1. Fetch the specific Email context
+    const { data: email, error: eError } = await supabase
+      .from('emails')
+      .select('*')
+      .eq('id', emailId)
+      .single();
+
+    if (eError || !email) return res.status(404).json({ error: 'Email context not found' });
+
+    // 2. Fetch the Neural Blueprint (Template)
+    const { data: blueprint, error: bError } = await supabase
+      .from('response_templates')
+      .select('*')
+      .eq('id', templateId)
+      .single();
+
+    if (bError || !blueprint) return res.status(404).json({ error: 'Blueprint not found' });
+
+    // 3. Call the specialized AI Service method
+    // If you haven't added this method to aiService yet, we'll need to do that!
+    const response = await aiService.generateFromBlueprint(email, blueprint, context);
+
+    res.json({ 
+      response,
+      blueprint_name: blueprint.name,
+      email_subject: email.subject
+    });
+  } catch (error) {
+    console.error('Blueprint synthesis error:', error);
     res.status(500).json({ error: error.message });
   }
 });
